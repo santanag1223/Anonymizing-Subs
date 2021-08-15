@@ -2,6 +2,7 @@ import os
 import argparse
 import shutil
 from random import randint
+from typing import Set
 from tqdm import tqdm
 
 # returns args object from argparse
@@ -12,17 +13,17 @@ def get_args():
     return args
 
 # returns if the string passed is a path
-def is_path(str):
-    if '/' in str:  return True
+def is_path(pth: str):
+    if '/' in pth:  return True
     else:           return False
 
 # returns if the string passed is a zipped file
-def is_zip(str):
-    if '.zip' in str: return True
+def is_zip(file: str):
+    if '.zip' in file: return True
     else:             return False
 
 # copies folder / file from path and returns basename
-def copy_from_path(sub_dir):
+def copy_from_path(sub_dir: str):
     start_dir = os.getcwd()                         # save our current dir
     os.chdir("/")                                   # go to the root dir
     shutil.copy(sub_dir, start_dir)                 # copy over subs folder
@@ -31,19 +32,10 @@ def copy_from_path(sub_dir):
     return os.path.basename(sub_dir)                # return new working folder
 
 # unzips file and returns new folder name 'temp'
-def unzip_folder(zipFile):
+def unzip_folder(zipFile: str):
     nozip = zipFile.replace(".zip" ,"")
     shutil.unpack_archive(zipFile, nozip)
     return nozip
-
-# function returns valid id and updated list of used_ids
-def get_valid_id(ls,size):
-    max = 3*size
-    num = randint(0,max)                    
-    while num in ls:
-        num = randint(0,max)
-    ls.append(num)
-    return ls, num
 
 def main():
     # get args from argparse
@@ -57,8 +49,8 @@ def main():
             print(f"Directory '{subs}' doesn't exsist in current directory.")
             quit()
         else:
-            shutil.copytree(subs, 'temp')           # if open folder exists, copy contents to temp folder
-            subs = 'temp'
+            shutil.copytree(subs, subs + '_copy')           # if open folder exists, copy contents to temp folder
+            subs += '_copy'
 
     if is_path(subs):                               # checks if subs arg is a path
         try:                                        
@@ -70,6 +62,7 @@ def main():
     
     if is_zip(subs):                                # check if the sub arg is a zip file
         try:
+            print('unzipping folder...')
             subs = unzip_folder(subs)               # if is a zip, unzip and rename working file to unzipped name
             if wasPath : os.remove(subs + ".zip")   # if originally from path, we can delete our zipfile
         except:
@@ -77,16 +70,18 @@ def main():
             quit()
 
     os.chdir(subs)
-    usedIDs = []
-    size = len(os.listdir())
+
+    # set of all possible ids based on how many folders in dir
+    possIDs = set(i for i in range(len(os.listdir()))) 
 
     # for every student in subs dir / rename to vaild id
     for student in tqdm(os.listdir(), desc = "Folders Anonymized", unit = "Folders"):
-        usedIDs, id = get_valid_id(usedIDs, size)
+        id = possIDs.pop()
         os.rename(student, "Student {:0>5}".format(id))
     os.chdir("..")
     
     # zip working folder to 'subs_anonymized'
+    print('creating new zip...')
     shutil.make_archive(subs + "_anonymized", "zip", subs)
     
     # delete subs
