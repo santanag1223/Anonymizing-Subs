@@ -1,8 +1,7 @@
 import os
 import argparse
 import shutil
-from random import randint
-from typing import Set
+from random import sample
 from tqdm import tqdm
 
 # returns args object from argparse
@@ -71,13 +70,13 @@ def main():
 
     os.chdir(subs)
 
-    # set of all possible ids based on how many folders in dir
-    possIDs = set(i for i in range(len(os.listdir()))) 
-
+    # list of numbers from 0 to size of dir, in random order
+    size = len(os.listdir())
+    possIDs = sample([i for i in range(size)], size)
+    
     # for every student in subs dir / rename to vaild id
     for student in tqdm(os.listdir(), desc = "Folders Anonymized", unit = "Folders"):
-        id = possIDs.pop()
-        os.rename(student, "Student {:0>5}".format(id))
+        os.rename(student, "Student {:0>5}".format(possIDs.pop()))
     os.chdir("..")
     
     # zip working folder to 'subs_anonymized'
