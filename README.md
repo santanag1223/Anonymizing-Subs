@@ -1,4 +1,4 @@
-###  *From My Undergrad Research at TAMU*
+###  *From My Research at Texas A&M University*
 # Anonymizing Submissions `anonSubs.py`
 - Python script that takes a zipped or unzipped folder and renames the files within it to a random ID.  Made to anonymize student submissions.
 
