@@ -1,4 +1,3 @@
-from math import trunc
 import os
 import argparse
 import shutil
