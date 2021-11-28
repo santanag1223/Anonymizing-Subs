@@ -1,73 +1,100 @@
+from math import trunc
 import os
 import argparse
 import shutil
-from random import sample
-from tqdm import tqdm
+from   random import sample
+from   tqdm   import tqdm
 
-# returns args object from argparse
 def get_args():
+    """Parses command line and returns parser object."""
+
     parser = argparse.ArgumentParser()
     parser.add_argument("subs", help = "submissions to be anonymized and zipped")
     args   = parser.parse_args()
     return args
 
-# returns if the string passed is a path
-def is_path(pth: str):
-    if '/' in pth:  return True
-    else:           return False
+def is_path(pth: str) -> bool:
+    """Checks if string is a path to a directory, returns True if '/' is present in the string."""
 
-# returns if the string passed is a zipped file
-def is_zip(file: str):
-    if '.zip' in file: return True
-    else:             return False
+    return '/' in pth
 
-# copies folder / file from path and returns basename
-def copy_from_path(sub_dir: str):
+def is_zip(file: str) -> bool:
+    """Checks if string is a '.zip' file, returns True if '.zip' is present in the string."""
+
+    return file.endswith('.zip')
+
+def copy_from_path(sub_dir: str) -> str:
+    """Copies a folder from given path and returns folder name."""
+
     start_dir = os.getcwd()                         # save our current dir
+    scr_dir   = start_dir + '/' +os.path.basename(sub_dir)
     os.chdir("/")                                   # go to the root dir
-    shutil.copy(sub_dir, start_dir)                 # copy over subs folder
+    shutil.copytree(sub_dir, scr_dir, dirs_exist_ok=True)# copy over subs folder
+    
     os.chdir(start_dir)                             # go back to working dir
 
     return os.path.basename(sub_dir)                # return new working folder
 
-# unzips file and returns new folder name 'temp'
-def unzip_folder(zipFile: str):
+def unzip_folder(zipFile: str) -> str:
+    """Unzips file and returns new folder name"""
+
     nozip = zipFile.replace(".zip" ,"")
     shutil.unpack_archive(zipFile, nozip)
     return nozip
 
+def unzip_from_path(zip_path: str) -> str:
+    """Copies '.zip' from another directory into current directory and unzips locally.\n
+    deletes the '.zip' folder copied over after unzipping it\n
+    returns new unzipped folder name """
+    
+    start_dir = os.getcwd()
+    
+    os.chdir('/')                                   # go to root dir
+    print("copying file from path...")
+    shutil.copy(zip_path,start_dir)                 # copy zipfile to our current dir
+    os.chdir(start_dir)                             # return to working dir
+
+    zipFolder = os.path.basename(zip_path)          # get our zipfolder name from path
+    print("unzipping file...")
+    zipFolder = unzip_folder(zipFolder)             # unzip folder and rename our zipFolder
+
+    os.remove(zipFolder + '.zip')                   # delete the copied over zip
+
+    return zipFolder                                # return working unzip file
+
+
 def main():
-    # get args from argparse
+
     args = get_args()
     subs = args.subs
-    wasPath = False
 
-    # get our new temp folder
-    if (not is_path(subs)) and (not is_zip(subs)):  # checks if the subs arg is just a nonzipped folder in current dir
-        if subs not in os.listdir():
-            print(f"Directory '{subs}' doesn't exsist in current directory.")
-            quit()
+    dlt  = False
+
+    if is_path(subs):
+        dlt = True
+        
+        if is_zip(subs):
+            try:                            subs = unzip_from_path(subs)
+            except FileNotFoundError as e:  print(f"Directory '{subs}' could not be found.\n",e)
+            except shutil.ReadError as e:   print(f"Directory '{subs}' could not be unzipped.\n",e)
+        
         else:
-            shutil.copytree(subs, subs + '_copy')           # if open folder exists, copy contents to temp folder
-            subs += '_copy'
-
-    if is_path(subs):                               # checks if subs arg is a path
-        try:                                        
-            subs = copy_from_path(subs)             # if path exists, we copy the basefile to our current dir
-            wasPath = True                          # save that we did copy from another dir
-        except :
-            print(f"Directory '{subs}' doesn't exsist or couldn't be opened.")
-            quit()
+            try:                            subs = copy_from_path(subs)
+            except Exception as e:          print(f"Directory '{subs}' could not be found.\n",e)
     
-    if is_zip(subs):                                # check if the sub arg is a zip file
-        try:
-            print('unzipping folder...')
-            subs = unzip_folder(subs)               # if is a zip, unzip and rename working file to unzipped name
-            if wasPath : os.remove(subs + ".zip")   # if originally from path, we can delete our zipfile
-        except:
-            print(f"Directory '{subs}' doesn't exsist or couldn't be opened.")
-            quit()
+    else:
 
+        if is_zip(subs):
+            dlt = True
+
+            try:                            subs = unzip_folder(subs)
+            except FileNotFoundError as e:  print(f"Directory '{subs}' could not be found.\n",e)
+            except shutil.ReadError as e:   print(f"Directory '{subs}' could not be unzipped.\n",e)
+        
+        else:
+            try:                            shutil.copytree(subs,subs+'_copy'); subs += '_copy'
+            except Exception as e:          print(f"Directory '{subs}' could not be found.\n",e)
+            
     os.chdir(subs)
 
     # list of numbers from 0 to size of dir, in random order
@@ -81,7 +108,7 @@ def main():
     
     # zip working folder to 'subs_anonymized'
     print('creating new zip...')
-    shutil.make_archive(subs + "_anonymized", "zip", subs)
+    shutil.make_archive(subs + "-anonymized", "zip", subs)
     
     # delete subs
     shutil.rmtree(subs)
